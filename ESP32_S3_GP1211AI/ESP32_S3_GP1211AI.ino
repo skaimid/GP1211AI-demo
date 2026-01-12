@@ -1,4 +1,5 @@
 #include <SPI.h>
+#include <Wire.h>
 
 // ==================== ESP32-S3 平台说明 ====================
 // 本代码适用于 ESP32-S3 芯片，从 Arduino 版本迁移而来
@@ -7,6 +8,7 @@
 // 2. 使用 LEDC PWM 控制器替代 analogWrite
 // 3. 更新引脚定义为 ESP32-S3 GPIO
 // 4. SPI 配置优化
+// 5. 添加 AHT20 温湿度传感器支持 (I2C)
 // ===========================================================
 
 // 包含字库头文件
@@ -36,6 +38,14 @@
 #define K_U_PIN      GPIO_NUM_18  // 增加亮度
 #define K_D_PIN      GPIO_NUM_19  // 减少亮度
 #define K_M_PIN      GPIO_NUM_20  // 菜单
+
+// I2C 引脚 (AHT20 温湿度传感器)
+#define I2C_SDA_PIN  GPIO_NUM_21  // I2C 数据线
+#define I2C_SCL_PIN  GPIO_NUM_22  // I2C 时钟线
+#define I2C_FREQ     100000       // I2C 频率 100kHz
+
+// AHT20 配置
+#define AHT20_ADDR   0x38         // AHT20 I2C 地址
 
 // ==================== LEDC PWM 配置 ====================
 #define LEDC_CHANNEL        0           // LEDC 通道
@@ -73,6 +83,12 @@ char timeBuffer[10];
 
 // SPI 对象
 SPIClass *vspi = NULL;
+
+// AHT20 温湿度数据
+float temperature = 0.0;    // 温度 (°C)
+float humidity = 0.0;       // 湿度 (%)
+unsigned long lastSensorRead = 0;  // 上次读取传感器的时间
+#define SENSOR_READ_INTERVAL 2000  // 传感器读取间隔 (ms)
 
 // ==================== VFD 逻辑函数 ====================
 
@@ -262,6 +278,114 @@ void Show_Timer(unsigned char row, unsigned char col) {
     VFD_DISP_ASC57_STR(row, col, timeBuffer);
 }
 
+// ==================== AHT20 温湿度传感器函数 ====================
+
+/**
+ * 初始化 AHT20 传感器
+ * @return true: 初始化成功, false: 失败
+ */
+bool AHT20_Init() {
+    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, I2C_FREQ);
+    delay(40);  // 等待传感器上电稳定
+
+    // 发送初始化命令
+    Wire.beginTransmission(AHT20_ADDR);
+    Wire.write(0xBE);  // 初始化命令
+    Wire.write(0x08);  // 参数1
+    Wire.write(0x00);  // 参数2
+    uint8_t error = Wire.endTransmission();
+
+    if (error != 0) {
+        Serial.printf("✗ AHT20 初始化失败 (错误代码: %d)\n", error);
+        return false;
+    }
+
+    delay(10);
+    Serial.println("✓ AHT20 初始化成功");
+    return true;
+}
+
+/**
+ * 触发 AHT20 测量
+ * @return true: 触发成功, false: 失败
+ */
+bool AHT20_TriggerMeasurement() {
+    Wire.beginTransmission(AHT20_ADDR);
+    Wire.write(0xAC);  // 触发测量命令
+    Wire.write(0x33);  // 参数1
+    Wire.write(0x00);  // 参数2
+    uint8_t error = Wire.endTransmission();
+
+    return (error == 0);
+}
+
+/**
+ * 读取 AHT20 温湿度数据
+ * @param temp: 温度输出 (°C)
+ * @param humi: 湿度输出 (%)
+ * @return true: 读取成功, false: 失败
+ */
+bool AHT20_ReadData(float *temp, float *humi) {
+    // 触发测量
+    if (!AHT20_TriggerMeasurement()) {
+        Serial.println("✗ AHT20 触发测量失败");
+        return false;
+    }
+
+    // 等待测量完成 (典型值 80ms)
+    delay(80);
+
+    // 读取 6 字节数据
+    uint8_t data[6];
+    Wire.requestFrom(AHT20_ADDR, 6);
+
+    if (Wire.available() != 6) {
+        Serial.println("✗ AHT20 数据读取失败");
+        return false;
+    }
+
+    for (int i = 0; i < 6; i++) {
+        data[i] = Wire.read();
+    }
+
+    // 检查状态位 (bit[7] = 忙标志, 应该为 0)
+    if (data[0] & 0x80) {
+        Serial.println("✗ AHT20 忙碌中");
+        return false;
+    }
+
+    // 计算湿度 (20位数据)
+    uint32_t raw_humidity = ((uint32_t)data[1] << 12) |
+                            ((uint32_t)data[2] << 4) |
+                            ((uint32_t)data[3] >> 4);
+    *humi = (raw_humidity * 100.0) / 1048576.0;  // 2^20 = 1048576
+
+    // 计算温度 (20位数据)
+    uint32_t raw_temperature = (((uint32_t)data[3] & 0x0F) << 16) |
+                               ((uint32_t)data[4] << 8) |
+                               ((uint32_t)data[5]);
+    *temp = (raw_temperature * 200.0) / 1048576.0 - 50.0;
+
+    return true;
+}
+
+/**
+ * 在 VFD 屏幕上显示温湿度
+ * @param row: 起始行 (0-7)
+ * @param col: 起始列 (0-15)
+ */
+void Display_TempHumi(unsigned char row, unsigned char col) {
+    char buffer[16];
+
+    // 显示温度
+    sprintf(buffer, "T:%5.1fC", temperature);
+    VFD_DISP_ASC57_STR(row, col, buffer);
+
+    // 显示湿度（下一行）
+    sprintf(buffer, "H:%5.1f%%", humidity);
+    VFD_DISP_ASC57_STR(row + 1, col, buffer);
+}
+
 // ==================== Setup & Loop ====================
 
 void setup() {
@@ -323,12 +447,25 @@ void setup() {
     digitalWrite(HV_EN_PIN, HIGH); // 高压开启
 
     Serial.println("✓ 高压开启，VFD 准备就绪\n");
+
+    // 6. 初始化 AHT20 温湿度传感器
+    if (AHT20_Init()) {
+        // 首次读取传感器数据
+        if (AHT20_ReadData(&temperature, &humidity)) {
+            Serial.printf("  温度: %.1f°C\n", temperature);
+            Serial.printf("  湿度: %.1f%%\n\n", humidity);
+        }
+    } else {
+        Serial.println("⚠ AHT20 传感器未检测到，温湿度功能不可用\n");
+    }
+
     Serial.println("按键功能:");
     Serial.println("  K_U (GPIO18): 增加亮度");
     Serial.println("  K_D (GPIO19): 减少亮度");
     Serial.println("  K_M (GPIO20): 菜单\n");
 
     timerStartTime = millis();
+    lastSensorRead = millis();
 }
 
 void loop() {
@@ -352,8 +489,29 @@ void loop() {
         while(digitalRead(K_D_PIN) == LOW);
     }
 
-    // 显示自定义图像
-    VFD_DISP_PIC_12864(my_image);
+    // 定期读取 AHT20 温湿度数据（每 2 秒）
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastSensorRead >= SENSOR_READ_INTERVAL) {
+        lastSensorRead = currentMillis;
+
+        if (AHT20_ReadData(&temperature, &humidity)) {
+            Serial.printf("温度: %.1f°C, 湿度: %.1f%%\n", temperature, humidity);
+        } else {
+            Serial.println("⚠ AHT20 读取失败");
+        }
+    }
+
+    // 清屏并显示信息
+    DP_RAM_CLR();
+
+    // 显示标题
+    VFD_DISP_ASC816_STR(0, 0, "ESP32-S3 VFD");
+
+    // 显示温湿度
+    Display_TempHumi(3, 0);
+
+    // 显示运行时间
+    Show_Timer(6, 0);
 
     // 更新显示缓冲区
     Disp_Buf_Update();

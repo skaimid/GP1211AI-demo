@@ -21,6 +21,7 @@
 5. **灵活 GPIO**: 45 个 GPIO，引脚可自由配置
 6. **扩展性强**: 支持 WiFi/蓝牙，可实现远程控制
 7. **调试友好**: USB CDC 串口，无需额外转换器
+8. **🌡️ 温湿度监测**: 集成 AHT20 传感器，实时显示环境数据
 
 ### 🔧 主要改进
 
@@ -47,6 +48,7 @@
 
 - ESP32-S3 开发板（DevKitC-1 或兼容板）
 - FUTABA GP1211AI VFD 显示模块
+- AHT20 温湿度传感器模块 **[新增]**
 - 电平转换器（如 TXS0108E）**[如果 VFD 是 5V]**
 - 杜邦线若干
 - 5V 电源（如需要）
@@ -80,20 +82,28 @@ pio run -t upload
 
 **快速参考表**:
 
-| ESP32-S3 | VFD | 功能 |
-|----------|-----|------|
-| GPIO12 | BK | PWM 亮度 |
-| GPIO13 | LAT | 锁存 |
-| GPIO14 | CLKG | 栅极时钟 |
-| GPIO15 | SIG | 信号 |
-| GPIO11 | SIA | SPI MOSI |
-| GPIO12 | CLKA | SPI SCK |
-| GPIO16 | HV_EN | 高压使能 |
-| GPIO17 | FL_EN | 灯丝使能 |
-| 3.3V | VCC | 电源 |
-| GND | GND | 地 |
+| ESP32-S3 | 设备 | 功能 |
+|----------|------|------|
+| **VFD 显示屏** |
+| GPIO12 | VFD BK | PWM 亮度 |
+| GPIO13 | VFD LAT | 锁存 |
+| GPIO14 | VFD CLKG | 栅极时钟 |
+| GPIO15 | VFD SIG | 信号 |
+| GPIO11 | VFD SIA | SPI MOSI |
+| GPIO12 | VFD CLKA | SPI SCK |
+| GPIO16 | VFD HV_EN | 高压使能 |
+| GPIO17 | VFD FL_EN | 灯丝使能 |
+| **AHT20 传感器** |
+| GPIO21 | AHT20 SDA | I2C 数据 |
+| GPIO22 | AHT20 SCL | I2C 时钟 |
+| 3.3V | AHT20 VCC | 传感器电源 |
+| **电源** |
+| 3.3V | - | 电源正极 |
+| GND | - | 公共地 |
 
-⚠️ **如果 VFD 是 5V 逻辑，所有信号线需通过电平转换器连接！**
+⚠️ **如果 VFD 是 5V 逻辑，VFD 信号线需通过电平转换器连接！**
+
+⚠️ **AHT20 是 3.3V 设备，直接连接 ESP32-S3，无需电平转换！**
 
 ### 4. 编译上传
 
@@ -167,19 +177,44 @@ void Disp_Buf_Update(void);
 void Show_Timer(unsigned char row, unsigned char col);
 ```
 
+### AHT20 温湿度传感器函数
+
+```cpp
+// 初始化 AHT20 传感器
+bool AHT20_Init();
+
+// 读取温湿度数据
+// @param temp: 温度输出 (°C)
+// @param humi: 湿度输出 (%)
+// @return: true=成功, false=失败
+bool AHT20_ReadData(float *temp, float *humi);
+
+// 在 VFD 屏幕上显示温湿度
+void Display_TempHumi(unsigned char row, unsigned char col);
+```
+
 ### 使用示例
 
 ```cpp
 void loop() {
+    // 读取温湿度（每 2 秒）
+    static unsigned long lastRead = 0;
+    if (millis() - lastRead >= 2000) {
+        lastRead = millis();
+        AHT20_ReadData(&temperature, &humidity);
+    }
+
     // 清屏
     DP_RAM_CLR();
 
-    // 显示文字
-    VFD_DISP_ASC57_STR(0, 0, "ESP32-S3");
-    VFD_DISP_ASC816_STR(2, 0, "VFD Display");
+    // 显示标题
+    VFD_DISP_ASC816_STR(0, 0, "ESP32-S3 VFD");
 
-    // 显示时间
-    Show_Timer(5, 0);
+    // 显示温湿度
+    Display_TempHumi(3, 0);  // 第3行开始显示
+
+    // 显示运行时间
+    Show_Timer(6, 0);
 
     // 刷新屏幕（重要！）
     Disp_Buf_Update();
