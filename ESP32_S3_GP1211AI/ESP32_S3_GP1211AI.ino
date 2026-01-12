@@ -20,19 +20,21 @@
 
 // ==================== ESP32-S3 引脚定义 ====================
 // ESP32-S3 GPIO 引脚配置（可根据实际硬件修改）
-#define VFD_BK_PIN   GPIO_NUM_12  // PWM 亮度控制
-#define VFD_LAT_PIN  GPIO_NUM_13  // 数据锁存
-#define VFD_CLKG_PIN GPIO_NUM_14  // 栅极时钟
-#define VFD_SIG_PIN  GPIO_NUM_15  // 信号控制
+#define VFD_SIG_PIN  GPIO_NUM_37  // 信号控制
+#define VFD_CLKG_PIN GPIO_NUM_38  // 栅极时钟
+#define VFD_LAT_PIN  GPIO_NUM_39  // 数据锁存
+#define VFD_BK_PIN   GPIO_NUM_40  // PWM 亮度控制
+
 
 // ESP32-S3 HSPI 引脚（使用默认 HSPI）
-#define VFD_SIA_PIN  GPIO_NUM_11  // MOSI
-#define VFD_CLKA_PIN GPIO_NUM_12  // SCK
-#define VFD_SS_PIN   GPIO_NUM_10  // SS (可选，未使用)
+#define VFD_CLKA_PIN GPIO_NUM_35  // SCK
+#define VFD_SIA_PIN  GPIO_NUM_36  // MOSI
+
+// #define VFD_SS_PIN   GPIO_NUM_10  // SS (可选，未使用)
 
 // 电源管理引脚
-#define HV_EN_PIN    GPIO_NUM_16  // 高压使能
-#define FL_EN_PIN    GPIO_NUM_17  // 灯丝使能
+#define HV_EN_PIN    GPIO_NUM_41  // 高压使能
+#define FL_EN_PIN    GPIO_NUM_42  // 灯丝使能
 
 // 按键引脚
 #define K_U_PIN      GPIO_NUM_18  // 增加亮度
@@ -40,19 +42,16 @@
 #define K_M_PIN      GPIO_NUM_20  // 菜单
 
 // I2C 引脚 (AHT20 温湿度传感器)
-#define I2C_SDA_PIN  GPIO_NUM_21  // I2C 数据线
-#define I2C_SCL_PIN  GPIO_NUM_22  // I2C 时钟线
+#define I2C_SDA_PIN  GPIO_NUM_4  // I2C 数据线
+#define I2C_SCL_PIN  GPIO_NUM_5  // I2C 时钟线
 #define I2C_FREQ     100000       // I2C 频率 100kHz
 
 // AHT20 配置
 #define AHT20_ADDR   0x38         // AHT20 I2C 地址
 
 // ==================== LEDC PWM 配置 ====================
-#define LEDC_CHANNEL        0           // LEDC 通道
-#define LEDC_TIMER          LEDC_TIMER_0
-#define LEDC_MODE           LEDC_LOW_SPEED_MODE
 #define LEDC_FREQUENCY      5000        // 5kHz PWM 频率
-#define LEDC_RESOLUTION     LEDC_TIMER_8_BIT  // 8位分辨率 (0-255)
+#define LEDC_RESOLUTION     8           // 8位分辨率 (0-255)
 
 // ==================== 硬件定时器配置 ====================
 hw_timer_t *timer = NULL;               // 定时器句柄
@@ -255,9 +254,9 @@ void IRAM_ATTR onTimer() {
 
     // 亮度控制 / 锁存序列
     // 使用 LEDC PWM 控制亮度
-    ledcWrite(LEDC_CHANNEL, 0);           // 消隐
+    ledcWrite(VFD_BK_PIN, 0);           // 消隐
     VFD_LAT_STROBE();                     // 锁存数据
-    ledcWrite(LEDC_CHANNEL, Disp_Brt_Data); // 恢复亮度
+    ledcWrite(VFD_BK_PIN, Disp_Brt_Data); // 恢复亮度
 
     VFD_GRID_SCAN--;
 
@@ -279,6 +278,60 @@ void Show_Timer(unsigned char row, unsigned char col) {
 }
 
 // ==================== AHT20 温湿度传感器函数 ====================
+
+// ==================== 硬件测试诊断函数 ====================
+
+/**
+ * 硬件引脚测试 - 用于快速定位问题
+ * 在串口监视器输入 't' 触发测试
+ */
+void RunHardwareTest() {
+    Serial.println("\n========== VFD 硬件诊断测试 ==========\n");
+
+    // 测试1: GPIO引脚状态
+    Serial.println("[测试1] GPIO引脚状态:");
+    Serial.printf("  HV_EN_PIN (GPIO%d): %s\n", HV_EN_PIN, digitalRead(HV_EN_PIN) ? "HIGH" : "LOW");
+    Serial.printf("  FL_EN_PIN (GPIO%d): %s\n", FL_EN_PIN, digitalRead(FL_EN_PIN) ? "HIGH" : "LOW");
+    Serial.printf("  当前亮度值: %d\n", Disp_Brt_Data);
+
+    // 测试2: 强制开启所有电源（用于测试）
+    Serial.println("\n[测试2] 强制开启VFD电源:");
+    Serial.println("  → 灯丝电源开启...");
+    digitalWrite(FL_EN_PIN, HIGH);
+    delay(500);
+
+    Serial.println("  → 高压电源开启...");
+    digitalWrite(HV_EN_PIN, HIGH);
+    delay(100);
+
+    Serial.println("  → 设置最大亮度...");
+    Disp_Brt_Data = 200;
+    ledcWrite(VFD_BK_PIN, Disp_Brt_Data);
+    delay(500);
+
+    // 测试3: 填充全白屏幕
+    Serial.println("\n[测试3] 显示全白测试图案...");
+    DP_RAM_CLR();
+    memset(DP_RAM, 0xFF, sizeof(DP_RAM));  // 全白
+    Disp_Buf_Update();
+    delay(2000);
+
+    // 恢复
+    Serial.println("\n[恢复] 恢复正常设置...");
+    Disp_Brt_Data = 50;
+    ledcWrite(VFD_BK_PIN, Disp_Brt_Data);
+    DP_RAM_CLR();
+    Disp_Buf_Update();
+
+    Serial.println("\n========== 测试完成 ==========");
+    Serial.println("如果看到屏幕闪烁或显示：");
+    Serial.println("  ✓ 硬件连接正常");
+    Serial.println("  ✓ 检查引脚定义是否正确");
+    Serial.println("\n如果屏幕完全黑屏：");
+    Serial.println("  ✗ 检查HV_EN/FL_EN引脚连接");
+    Serial.println("  ✗ 检查电源电压（需要高压模块）");
+    Serial.println("  ✗ 检查SPI接线（CLK/MOSI）\n");
+}
 
 /**
  * 初始化 AHT20 传感器
@@ -407,9 +460,8 @@ void setup() {
     pinMode(K_M_PIN, INPUT_PULLUP);
 
     // 2. 配置 LEDC PWM（替代 analogWrite）
-    ledcSetup(LEDC_CHANNEL, LEDC_FREQUENCY, LEDC_RESOLUTION);
-    ledcAttachPin(VFD_BK_PIN, LEDC_CHANNEL);
-    ledcWrite(LEDC_CHANNEL, 0); // 初始亮度为 0
+    ledcAttach(VFD_BK_PIN, LEDC_FREQUENCY, LEDC_RESOLUTION);
+    ledcWrite(VFD_BK_PIN, Disp_Brt_Data); // 使用初始亮度值 (50)
 
     Serial.println("✓ GPIO 初始化完成");
     Serial.println("✓ LEDC PWM 配置完成");
@@ -422,29 +474,33 @@ void setup() {
     Serial.println("✓ SPI 初始化完成 (8MHz, LSB First)");
 
     // 4. 上电时序
+    // VFD 正确的上电顺序：灯丝预热 → 启动数据刷新 → 开启高压
     digitalWrite(FL_EN_PIN, HIGH); // 灯丝开启
     digitalWrite(HV_EN_PIN, LOW);  // 高压关闭
     DP_RAM_CLR();
 
     Serial.println("✓ 灯丝预热中...");
-    delay(100);
+    delay(500);  // 增加预热时间到500ms
 
-    // 5. 初始化硬件定时器
-    // ESP32-S3 有 4 个定时器组，每组 2 个定时器
-    // 使用定时器 0，分频器 80 (1MHz 时钟)，188us = 188 计数
-    timer = timerBegin(0, 80, true); // 定时器 0, 分频 80, 向上计数
-    timerAttachInterrupt(timer, &onTimer, true); // 绑定中断函数
-    timerAlarmWrite(timer, 188, true); // 188us 周期，自动重载
-    timerAlarmEnable(timer); // 启动定时器
+    // 5. 初始化硬件定时器（必须在开启高压之前启动，确保数据就绪）
+    // 新版 ESP32 Arduino Core v3.0+ API
+    // 188us 周期 = 5319 Hz (1 / 0.000188)
+    timer = timerBegin(5319);  // 频率 5319 Hz
+    timerAttachInterrupt(timer, &onTimer); // 绑定中断函数
+    timerAlarm(timer, 1, true, 0);  // 每次 tick 触发，自动重载，无限次
 
     Serial.println("✓ 硬件定时器启动 (188us 周期)");
 
     // 显示初始图像
     Disp_Buf_Update();
 
-    digitalWrite(FL_EN_PIN, LOW);
+    // 注意：原代码逻辑 FL_EN=0 后 Delay 100ms 再 HV_EN=1
+    digitalWrite(FL_EN_PIN, LOW); // 灯丝开启
     delay(100);
+
+    // 灯丝保持开启，开启高压
     digitalWrite(HV_EN_PIN, HIGH); // 高压开启
+    delay(100);
 
     Serial.println("✓ 高压开启，VFD 准备就绪\n");
 
@@ -456,19 +512,29 @@ void setup() {
             Serial.printf("  湿度: %.1f%%\n\n", humidity);
         }
     } else {
-        Serial.println("⚠ AHT20 传感器未检测到，温湿度功能不可用\n");
+        Serial.println(" AHT20 传感器未检测到，温湿度功能不可用\n");
     }
 
     Serial.println("按键功能:");
     Serial.println("  K_U (GPIO18): 增加亮度");
     Serial.println("  K_D (GPIO19): 减少亮度");
-    Serial.println("  K_M (GPIO20): 菜单\n");
+    Serial.println("  K_M (GPIO20): 菜单");
+    Serial.println("\n调试命令:");
+    Serial.println("  在串口监视器输入 't' 运行硬件诊断测试\n");
 
     timerStartTime = millis();
     lastSensorRead = millis();
 }
 
 void loop() {
+    // 串口命令处理（用于调试）
+    if (Serial.available() > 0) {
+        char cmd = Serial.read();
+        if (cmd == 't' || cmd == 'T') {
+            RunHardwareTest();
+        }
+    }
+
     // 按键处理逻辑
     if (digitalRead(K_U_PIN) == LOW) {
         delay(10);
@@ -497,7 +563,7 @@ void loop() {
         if (AHT20_ReadData(&temperature, &humidity)) {
             Serial.printf("温度: %.1f°C, 湿度: %.1f%%\n", temperature, humidity);
         } else {
-            Serial.println("⚠ AHT20 读取失败");
+            Serial.println(" AHT20 读取失败");
         }
     }
 
