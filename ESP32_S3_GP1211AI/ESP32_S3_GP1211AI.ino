@@ -1,36 +1,39 @@
 #include <SPI.h>
 #include <Wire.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include <time.h>
 
 // ==================== ESP32-S3 平台说明 ====================
 // 本代码适用于 ESP32-S3 芯片，从 Arduino 版本迁移而来
-// 主要改动：
-// 1. 使用 ESP32 硬件定时器替代 TimerOne
-// 2. 使用 LEDC PWM 控制器替代 analogWrite
-// 3. 更新引脚定义为 ESP32-S3 GPIO
-// 4. SPI 配置优化
-// 5. 添加 AHT20 温湿度传感器支持 (I2C)
+// 功能：
+// 1. WiFi连接和NTP时间同步
+// 2. 显示实时时间
+// 3. 显示外部天气和气温（带图标）
+// 4. 显示AHT20传感器温湿度
+// 5. 按钮切换到小时天气预报
 // ===========================================================
+
+// 包含配置和资源文件
+#include "config.h"
+#include "weather_icons.h"
 
 // 包含字库头文件
 #include "../Arduino_GP1211AI/ASC1224.h"
 #include "../Arduino_GP1211AI/ASC816.h"
 #include "../Arduino_GP1211AI/ASC57.h"
 #include "../Arduino_GP1211AI/my_img.h"
-// #include "../Arduino_GP1211AI/CHINESE.h" // 如果需要中文，取消注释
 
 // ==================== ESP32-S3 引脚定义 ====================
-// ESP32-S3 GPIO 引脚配置（可根据实际硬件修改）
 #define VFD_SIG_PIN  GPIO_NUM_37  // 信号控制
 #define VFD_CLKG_PIN GPIO_NUM_38  // 栅极时钟
 #define VFD_LAT_PIN  GPIO_NUM_39  // 数据锁存
 #define VFD_BK_PIN   GPIO_NUM_40  // PWM 亮度控制
 
-
-// ESP32-S3 HSPI 引脚（使用默认 HSPI）
+// ESP32-S3 HSPI 引脚
 #define VFD_CLKA_PIN GPIO_NUM_35  // SCK
 #define VFD_SIA_PIN  GPIO_NUM_36  // MOSI
-
-// #define VFD_SS_PIN   GPIO_NUM_10  // SS (可选，未使用)
 
 // 电源管理引脚
 #define HV_EN_PIN    GPIO_NUM_41  // 高压使能
@@ -39,15 +42,15 @@
 // 按键引脚
 #define K_U_PIN      GPIO_NUM_18  // 增加亮度
 #define K_D_PIN      GPIO_NUM_19  // 减少亮度
-#define K_M_PIN      GPIO_NUM_20  // 菜单
+#define K_M_PIN      GPIO_NUM_20  // 菜单/切换布局
 
 // I2C 引脚 (AHT20 温湿度传感器)
 #define I2C_SDA_PIN  GPIO_NUM_4  // I2C 数据线
 #define I2C_SCL_PIN  GPIO_NUM_5  // I2C 时钟线
-#define I2C_FREQ     100000       // I2C 频率 100kHz
+#define I2C_FREQ     100000      // I2C 频率 100kHz
 
 // AHT20 配置
-#define AHT20_ADDR   0x38         // AHT20 I2C 地址
+#define AHT20_ADDR   0x38        // AHT20 I2C 地址
 
 // ==================== LEDC PWM 配置 ====================
 #define LEDC_FREQUENCY      5000        // 5kHz PWM 频率
@@ -76,10 +79,6 @@ volatile unsigned char VFD_GRID_SCAN = 0;
 volatile unsigned char *DP_BUF_POINT;
 volatile unsigned char Disp_Brt_Data = 50; // 亮度 (0-255)
 
-// 时间相关
-unsigned long timerStartTime = 0;
-char timeBuffer[10];
-
 // SPI 对象
 SPIClass *vspi = NULL;
 
@@ -88,6 +87,40 @@ float temperature = 0.0;    // 温度 (°C)
 float humidity = 0.0;       // 湿度 (%)
 unsigned long lastSensorRead = 0;  // 上次读取传感器的时间
 #define SENSOR_READ_INTERVAL 2000  // 传感器读取间隔 (ms)
+
+// WiFi 和时间
+bool wifiConnected = false;
+struct tm timeinfo;
+char timeBuffer[32];
+char dateBuffer[32];
+
+// 天气数据
+struct WeatherData {
+    float temp;
+    int humidity;
+    String description;
+    String icon;
+    int weatherId;
+};
+
+WeatherData currentWeather;
+WeatherData hourlyForecast[8];  // 存储8小时预报
+unsigned long lastWeatherUpdate = 0;
+bool weatherDataValid = false;
+
+// UI 状态
+enum DisplayMode {
+    MODE_DEFAULT,      // 默认布局
+    MODE_HOURLY        // 小时预报布局
+};
+
+DisplayMode currentMode = MODE_DEFAULT;
+unsigned long modeChangeTime = 0;
+#define MODE_AUTO_RETURN_TIME 20000  // 20秒后自动返回
+
+// 按钮防抖
+unsigned long lastButtonPress = 0;
+#define BUTTON_DEBOUNCE 200
 
 // ==================== VFD 逻辑函数 ====================
 
@@ -224,8 +257,23 @@ void DP_RAM_CLR(void) {
     memset(DP_RAM, 0, sizeof(DP_RAM));
 }
 
+// 显示16x16天气图标
+void Display_Weather_Icon(unsigned char x, unsigned char y, const unsigned char* icon) {
+    for (unsigned char row = 0; row < 2; row++) {
+        for (unsigned char col = 0; col < 16; col++) {
+            DP_RAM[x + row][y + col] = pgm_read_byte(&icon[row * 16 + col]);
+        }
+    }
+}
+
+// 显示8x8小图标
+void Display_Small_Icon(unsigned char x, unsigned char y, const unsigned char* icon) {
+    for (unsigned char i = 0; i < 8; i++) {
+        DP_RAM[x][y + i] = pgm_read_byte(&icon[i]);
+    }
+}
+
 // ==================== ESP32 硬件定时器中断 ====================
-// 定时器中断服务程序（ISR）- 使用 IRAM_ATTR 确保代码在 RAM 中执行
 void IRAM_ATTR onTimer() {
     portENTER_CRITICAL_ISR(&timerMux);
 
@@ -253,7 +301,6 @@ void IRAM_ATTR onTimer() {
     VFD_CLKG_STROBE();
 
     // 亮度控制 / 锁存序列
-    // 使用 LEDC PWM 控制亮度
     ledcWrite(VFD_BK_PIN, 0);           // 消隐
     VFD_LAT_STROBE();                     // 锁存数据
     ledcWrite(VFD_BK_PIN, Disp_Brt_Data); // 恢复亮度
@@ -263,89 +310,166 @@ void IRAM_ATTR onTimer() {
     portEXIT_CRITICAL_ISR(&timerMux);
 }
 
-// ==================== 时间显示函数 ====================
+// ==================== WiFi 连接函数 ====================
 
-void Show_Timer(unsigned char row, unsigned char col) {
-    unsigned long currentMillis = millis();
-    unsigned long totalSeconds = (currentMillis - timerStartTime) / 1000;
+void Connect_WiFi() {
+    Serial.println("\n连接WiFi...");
+    Serial.printf("SSID: %s\n", WIFI_SSID);
 
-    unsigned long seconds = totalSeconds % 60;
-    unsigned long minutes = (totalSeconds / 60) % 60;
-    unsigned long hours   = (totalSeconds / 3600);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-    sprintf(timeBuffer, "%02lu:%02lu:%02lu", hours, minutes, seconds);
-    VFD_DISP_ASC57_STR(row, col, timeBuffer);
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+        delay(500);
+        Serial.print(".");
+        attempts++;
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+        wifiConnected = true;
+        Serial.println("\n✓ WiFi连接成功");
+        Serial.print("  IP地址: ");
+        Serial.println(WiFi.localIP());
+    } else {
+        wifiConnected = false;
+        Serial.println("\n✗ WiFi连接失败");
+    }
+}
+
+// ==================== NTP 时间同步函数 ====================
+
+void Sync_Time() {
+    if (!wifiConnected) return;
+
+    Serial.println("同步时间...");
+    configTime(TIMEZONE_OFFSET, 0, NTP_SERVER);
+
+    int attempts = 0;
+    while (!getLocalTime(&timeinfo) && attempts < 10) {
+        delay(500);
+        Serial.print(".");
+        attempts++;
+    }
+
+    if (getLocalTime(&timeinfo)) {
+        Serial.println("\n✓ 时间同步成功");
+        Serial.printf("  当前时间: %04d-%02d-%02d %02d:%02d:%02d\n",
+                     timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+                     timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    } else {
+        Serial.println("\n✗ 时间同步失败");
+    }
+}
+
+// ==================== 天气API函数 ====================
+
+const unsigned char* Get_Weather_Icon(int weatherId) {
+    // 根据OpenWeatherMap的天气ID返回对应图标
+    if (weatherId >= 200 && weatherId < 300) {
+        return icon_thunderstorm;  // 雷暴
+    } else if (weatherId >= 300 && weatherId < 600) {
+        return icon_rainy;  // 雨
+    } else if (weatherId >= 600 && weatherId < 700) {
+        return icon_snowy;  // 雪
+    } else if (weatherId >= 700 && weatherId < 800) {
+        return icon_mist;  // 雾/霾
+    } else if (weatherId == 800) {
+        return icon_sunny;  // 晴天
+    } else {
+        return icon_cloudy;  // 多云
+    }
+}
+
+bool Fetch_Weather() {
+    if (!wifiConnected) {
+        Serial.println("✗ WiFi未连接，无法获取天气");
+        return false;
+    }
+
+    HTTPClient http;
+    String url = "http://api.openweathermap.org/data/2.5/weather?q=" +
+                 String(WEATHER_CITY) + "," + String(WEATHER_COUNTRY) +
+                 "&appid=" + String(WEATHER_API_KEY) + "&units=metric";
+
+    Serial.println("获取当前天气...");
+    http.begin(url);
+    int httpCode = http.GET();
+
+    if (httpCode == HTTP_CODE_OK) {
+        String payload = http.getString();
+        DynamicJsonDocument doc(2048);
+        DeserializationError error = deserializeJson(doc, payload);
+
+        if (!error) {
+            currentWeather.temp = doc["main"]["temp"];
+            currentWeather.humidity = doc["main"]["humidity"];
+            currentWeather.description = doc["weather"][0]["description"].as<String>();
+            currentWeather.weatherId = doc["weather"][0]["id"];
+
+            weatherDataValid = true;
+            Serial.println("✓ 天气数据获取成功");
+            Serial.printf("  温度: %.1f°C\n", currentWeather.temp);
+            Serial.printf("  湿度: %d%%\n", currentWeather.humidity);
+            Serial.printf("  状况: %s\n", currentWeather.description.c_str());
+
+            http.end();
+            return true;
+        }
+    }
+
+    http.end();
+    Serial.printf("✗ 天气获取失败 (HTTP: %d)\n", httpCode);
+    return false;
+}
+
+bool Fetch_Hourly_Forecast() {
+    if (!wifiConnected) return false;
+
+    HTTPClient http;
+    String url = "http://api.openweathermap.org/data/2.5/forecast?q=" +
+                 String(WEATHER_CITY) + "," + String(WEATHER_COUNTRY) +
+                 "&appid=" + String(WEATHER_API_KEY) + "&units=metric&cnt=8";
+
+    Serial.println("获取小时预报...");
+    http.begin(url);
+    int httpCode = http.GET();
+
+    if (httpCode == HTTP_CODE_OK) {
+        String payload = http.getString();
+        DynamicJsonDocument doc(8192);
+        DeserializationError error = deserializeJson(doc, payload);
+
+        if (!error) {
+            JsonArray list = doc["list"];
+            for (int i = 0; i < 8 && i < list.size(); i++) {
+                hourlyForecast[i].temp = list[i]["main"]["temp"];
+                hourlyForecast[i].humidity = list[i]["main"]["humidity"];
+                hourlyForecast[i].weatherId = list[i]["weather"][0]["id"];
+                hourlyForecast[i].description = list[i]["weather"][0]["description"].as<String>();
+            }
+
+            Serial.println("✓ 小时预报获取成功");
+            http.end();
+            return true;
+        }
+    }
+
+    http.end();
+    Serial.printf("✗ 小时预报获取失败 (HTTP: %d)\n", httpCode);
+    return false;
 }
 
 // ==================== AHT20 温湿度传感器函数 ====================
 
-// ==================== 硬件测试诊断函数 ====================
-
-/**
- * 硬件引脚测试 - 用于快速定位问题
- * 在串口监视器输入 't' 触发测试
- */
-void RunHardwareTest() {
-    Serial.println("\n========== VFD 硬件诊断测试 ==========\n");
-
-    // 测试1: GPIO引脚状态
-    Serial.println("[测试1] GPIO引脚状态:");
-    Serial.printf("  HV_EN_PIN (GPIO%d): %s\n", HV_EN_PIN, digitalRead(HV_EN_PIN) ? "HIGH" : "LOW");
-    Serial.printf("  FL_EN_PIN (GPIO%d): %s\n", FL_EN_PIN, digitalRead(FL_EN_PIN) ? "HIGH" : "LOW");
-    Serial.printf("  当前亮度值: %d\n", Disp_Brt_Data);
-
-    // 测试2: 强制开启所有电源（用于测试）
-    Serial.println("\n[测试2] 强制开启VFD电源:");
-    Serial.println("  → 灯丝电源开启...");
-    digitalWrite(FL_EN_PIN, HIGH);
-    delay(500);
-
-    Serial.println("  → 高压电源开启...");
-    digitalWrite(HV_EN_PIN, HIGH);
-    delay(100);
-
-    Serial.println("  → 设置最大亮度...");
-    Disp_Brt_Data = 200;
-    ledcWrite(VFD_BK_PIN, Disp_Brt_Data);
-    delay(500);
-
-    // 测试3: 填充全白屏幕
-    Serial.println("\n[测试3] 显示全白测试图案...");
-    DP_RAM_CLR();
-    memset(DP_RAM, 0xFF, sizeof(DP_RAM));  // 全白
-    Disp_Buf_Update();
-    delay(2000);
-
-    // 恢复
-    Serial.println("\n[恢复] 恢复正常设置...");
-    Disp_Brt_Data = 50;
-    ledcWrite(VFD_BK_PIN, Disp_Brt_Data);
-    DP_RAM_CLR();
-    Disp_Buf_Update();
-
-    Serial.println("\n========== 测试完成 ==========");
-    Serial.println("如果看到屏幕闪烁或显示：");
-    Serial.println("  ✓ 硬件连接正常");
-    Serial.println("  ✓ 检查引脚定义是否正确");
-    Serial.println("\n如果屏幕完全黑屏：");
-    Serial.println("  ✗ 检查HV_EN/FL_EN引脚连接");
-    Serial.println("  ✗ 检查电源电压（需要高压模块）");
-    Serial.println("  ✗ 检查SPI接线（CLK/MOSI）\n");
-}
-
-/**
- * 初始化 AHT20 传感器
- * @return true: 初始化成功, false: 失败
- */
 bool AHT20_Init() {
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, I2C_FREQ);
-    delay(40);  // 等待传感器上电稳定
+    delay(40);
 
-    // 发送初始化命令
     Wire.beginTransmission(AHT20_ADDR);
-    Wire.write(0xBE);  // 初始化命令
-    Wire.write(0x08);  // 参数1
-    Wire.write(0x00);  // 参数2
+    Wire.write(0xBE);
+    Wire.write(0x08);
+    Wire.write(0x00);
     uint8_t error = Wire.endTransmission();
 
     if (error != 0) {
@@ -358,42 +482,27 @@ bool AHT20_Init() {
     return true;
 }
 
-/**
- * 触发 AHT20 测量
- * @return true: 触发成功, false: 失败
- */
 bool AHT20_TriggerMeasurement() {
     Wire.beginTransmission(AHT20_ADDR);
-    Wire.write(0xAC);  // 触发测量命令
-    Wire.write(0x33);  // 参数1
-    Wire.write(0x00);  // 参数2
+    Wire.write(0xAC);
+    Wire.write(0x33);
+    Wire.write(0x00);
     uint8_t error = Wire.endTransmission();
 
     return (error == 0);
 }
 
-/**
- * 读取 AHT20 温湿度数据
- * @param temp: 温度输出 (°C)
- * @param humi: 湿度输出 (%)
- * @return true: 读取成功, false: 失败
- */
 bool AHT20_ReadData(float *temp, float *humi) {
-    // 触发测量
     if (!AHT20_TriggerMeasurement()) {
-        Serial.println("✗ AHT20 触发测量失败");
         return false;
     }
 
-    // 等待测量完成 (典型值 80ms)
     delay(80);
 
-    // 读取 6 字节数据
     uint8_t data[6];
     Wire.requestFrom(AHT20_ADDR, 6);
 
     if (Wire.available() != 6) {
-        Serial.println("✗ AHT20 数据读取失败");
         return false;
     }
 
@@ -401,19 +510,15 @@ bool AHT20_ReadData(float *temp, float *humi) {
         data[i] = Wire.read();
     }
 
-    // 检查状态位 (bit[7] = 忙标志, 应该为 0)
     if (data[0] & 0x80) {
-        Serial.println("✗ AHT20 忙碌中");
         return false;
     }
 
-    // 计算湿度 (20位数据)
     uint32_t raw_humidity = ((uint32_t)data[1] << 12) |
                             ((uint32_t)data[2] << 4) |
                             ((uint32_t)data[3] >> 4);
-    *humi = (raw_humidity * 100.0) / 1048576.0;  // 2^20 = 1048576
+    *humi = (raw_humidity * 100.0) / 1048576.0;
 
-    // 计算温度 (20位数据)
     uint32_t raw_temperature = (((uint32_t)data[3] & 0x0F) << 16) |
                                ((uint32_t)data[4] << 8) |
                                ((uint32_t)data[5]);
@@ -422,120 +527,92 @@ bool AHT20_ReadData(float *temp, float *humi) {
     return true;
 }
 
-/**
- * 在 VFD 屏幕上显示温湿度
- * @param row: 起始行 (0-7)
- * @param col: 起始列 (0-15)
- */
-void Display_TempHumi(unsigned char row, unsigned char col) {
-    char buffer[16];
+// ==================== UI 显示函数 ====================
 
-    // 显示温度
-    sprintf(buffer, "T:%5.1fC", temperature);
-    VFD_DISP_ASC57_STR(row, col, buffer);
-
-    // 显示湿度（下一行）
-    sprintf(buffer, "H:%5.1f%%", humidity);
-    VFD_DISP_ASC57_STR(row + 1, col, buffer);
-}
-
-// ==================== Setup & Loop ====================
-
-void setup() {
-    Serial.begin(115200);
-    Serial.println("\n==========================================");
-    Serial.println("ESP32-S3 GP1211AI VFD Display Driver");
-    Serial.println("==========================================\n");
-
-    // 1. 初始化 GPIO 引脚
-    pinMode(VFD_LAT_PIN, OUTPUT);
-    pinMode(VFD_CLKG_PIN, OUTPUT);
-    pinMode(VFD_SIG_PIN, OUTPUT);
-    pinMode(HV_EN_PIN, OUTPUT);
-    pinMode(FL_EN_PIN, OUTPUT);
-
-    // 按钮（使用内部上拉）
-    pinMode(K_U_PIN, INPUT_PULLUP);
-    pinMode(K_D_PIN, INPUT_PULLUP);
-    pinMode(K_M_PIN, INPUT_PULLUP);
-
-    // 2. 配置 LEDC PWM（替代 analogWrite）
-    ledcAttach(VFD_BK_PIN, LEDC_FREQUENCY, LEDC_RESOLUTION);
-    ledcWrite(VFD_BK_PIN, Disp_Brt_Data); // 使用初始亮度值 (50)
-
-    Serial.println("✓ GPIO 初始化完成");
-    Serial.println("✓ LEDC PWM 配置完成");
-
-    // 3. 初始化 SPI（使用 HSPI）
-    vspi = new SPIClass(HSPI);
-    vspi->begin(VFD_CLKA_PIN, -1, VFD_SIA_PIN, -1); // SCK, MISO(-1), MOSI, SS(-1)
-    vspi->beginTransaction(SPISettings(8000000, LSBFIRST, SPI_MODE0));
-
-    Serial.println("✓ SPI 初始化完成 (8MHz, LSB First)");
-
-    // 4. 上电时序
-    // VFD 正确的上电顺序：灯丝预热 → 启动数据刷新 → 开启高压
-    digitalWrite(FL_EN_PIN, HIGH); // 灯丝开启
-    digitalWrite(HV_EN_PIN, LOW);  // 高压关闭
+void Display_Default_UI() {
     DP_RAM_CLR();
 
-    Serial.println("✓ 灯丝预热中...");
-    delay(500);  // 增加预热时间到500ms
+    // 第一行：显示当前时间
+    if (getLocalTime(&timeinfo)) {
+        sprintf(timeBuffer, "%02d:%02d:%02d",
+                timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+        VFD_DISP_ASC816_STR(0, 0, timeBuffer);
 
-    // 5. 初始化硬件定时器（必须在开启高压之前启动，确保数据就绪）
-    // 新版 ESP32 Arduino Core v3.0+ API
-    // 188us 周期 = 5319 Hz (1 / 0.000188)
-    timer = timerBegin(5319);  // 频率 5319 Hz
-    timerAttachInterrupt(timer, &onTimer); // 绑定中断函数
-    timerAlarm(timer, 1, true, 0);  // 每次 tick 触发，自动重载，无限次
-
-    Serial.println("✓ 硬件定时器启动 (188us 周期)");
-
-    // 显示初始图像
-    Disp_Buf_Update();
-
-    // 注意：原代码逻辑 FL_EN=0 后 Delay 100ms 再 HV_EN=1
-    digitalWrite(FL_EN_PIN, LOW); // 灯丝开启
-    delay(100);
-
-    // 灯丝保持开启，开启高压
-    digitalWrite(HV_EN_PIN, HIGH); // 高压开启
-    delay(100);
-
-    Serial.println("✓ 高压开启，VFD 准备就绪\n");
-
-    // 6. 初始化 AHT20 温湿度传感器
-    if (AHT20_Init()) {
-        // 首次读取传感器数据
-        if (AHT20_ReadData(&temperature, &humidity)) {
-            Serial.printf("  温度: %.1f°C\n", temperature);
-            Serial.printf("  湿度: %.1f%%\n\n", humidity);
-        }
+        // 显示日期（右侧小字）
+        sprintf(dateBuffer, "%02d/%02d", timeinfo.tm_mon + 1, timeinfo.tm_mday);
+        VFD_DISP_ASC57_STR(0, 10, dateBuffer);
     } else {
-        Serial.println(" AHT20 传感器未检测到，温湿度功能不可用\n");
+        VFD_DISP_ASC816_STR(0, 0, "--:--:--");
     }
 
-    Serial.println("按键功能:");
-    Serial.println("  K_U (GPIO18): 增加亮度");
-    Serial.println("  K_D (GPIO19): 减少亮度");
-    Serial.println("  K_M (GPIO20): 菜单");
-    Serial.println("\n调试命令:");
-    Serial.println("  在串口监视器输入 't' 运行硬件诊断测试\n");
+    // 下部左侧：外部天气和气温（带图标）
+    if (weatherDataValid) {
+        // 显示天气图标 (行3-4, 列0-1)
+        Display_Weather_Icon(3, 0, Get_Weather_Icon(currentWeather.weatherId));
 
-    timerStartTime = millis();
-    lastSensorRead = millis();
+        // 显示温度 (行3)
+        char tempStr[16];
+        sprintf(tempStr, "%3.0fC", currentWeather.temp);
+        VFD_DISP_ASC816_STR(1, 2, tempStr);
+
+        // 显示天气描述 (行5, 小字)
+        VFD_DISP_ASC57_STR(5, 0, currentWeather.description.substring(0, 10).c_str());
+    } else {
+        VFD_DISP_ASC57_STR(3, 0, "Weather");
+        VFD_DISP_ASC57_STR(4, 0, "N/A");
+    }
+
+    // 下部右侧：传感器温湿度
+    char buffer[16];
+
+    // 温度图标和数值
+    Display_Small_Icon(3, 64, icon_temp);
+    sprintf(buffer, "%5.1fC", temperature);
+    VFD_DISP_ASC816_STR(1, 9, buffer);
+
+    // 湿度图标和数值
+    Display_Small_Icon(5, 64, icon_humidity);
+    sprintf(buffer, "%5.1f%%", humidity);
+    VFD_DISP_ASC816_STR(2, 9, buffer);
 }
 
-void loop() {
-    // 串口命令处理（用于调试）
-    if (Serial.available() > 0) {
-        char cmd = Serial.read();
-        if (cmd == 't' || cmd == 'T') {
-            RunHardwareTest();
+void Display_Hourly_UI() {
+    DP_RAM_CLR();
+
+    // 标题
+    VFD_DISP_ASC816_STR(0, 0, "HOURLY");
+
+    // 显示4个时段的预报（分两行）
+    for (int i = 0; i < 4; i++) {
+        // 第一行：前4小时
+        int x = 2;
+        int y = i * 30;
+
+        char tempStr[8];
+        sprintf(tempStr, "%2.0fC", hourlyForecast[i].temp);
+        VFD_DISP_ASC57_STR(x, y / 8, tempStr);
+
+        // 第二行：后4小时
+        if (i + 4 < 8) {
+            sprintf(tempStr, "%2.0fC", hourlyForecast[i + 4].temp);
+            VFD_DISP_ASC57_STR(x + 2, y / 8, tempStr);
         }
     }
 
-    // 按键处理逻辑
+    // 显示倒计时提示
+    unsigned long elapsed = millis() - modeChangeTime;
+    unsigned long remaining = (MODE_AUTO_RETURN_TIME - elapsed) / 1000;
+    char countStr[8];
+    sprintf(countStr, "%lus", remaining);
+    VFD_DISP_ASC57_STR(7, 13, countStr);
+}
+
+// ==================== 按钮处理函数 ====================
+
+void Handle_Buttons() {
+    unsigned long currentMillis = millis();
+
+    // 亮度增加按钮
     if (digitalRead(K_U_PIN) == LOW) {
         delay(10);
         if (digitalRead(K_U_PIN) == LOW) {
@@ -546,6 +623,7 @@ void loop() {
         while(digitalRead(K_U_PIN) == LOW);
     }
 
+    // 亮度减少按钮
     if (digitalRead(K_D_PIN) == LOW) {
         delay(10);
         if (digitalRead(K_D_PIN) == LOW) {
@@ -555,31 +633,154 @@ void loop() {
         while(digitalRead(K_D_PIN) == LOW);
     }
 
-    // 定期读取 AHT20 温湿度数据（每 2 秒）
-    unsigned long currentMillis = millis();
-    if (currentMillis - lastSensorRead >= SENSOR_READ_INTERVAL) {
-        lastSensorRead = currentMillis;
+    // 菜单/模式切换按钮
+    if (digitalRead(K_M_PIN) == LOW &&
+        (currentMillis - lastButtonPress) > BUTTON_DEBOUNCE) {
+        delay(10);
+        if (digitalRead(K_M_PIN) == LOW) {
+            lastButtonPress = currentMillis;
 
+            if (currentMode == MODE_DEFAULT) {
+                // 切换到小时预报模式
+                currentMode = MODE_HOURLY;
+                modeChangeTime = currentMillis;
+                Serial.println("切换到小时预报模式");
+
+                // 获取小时预报数据
+                Fetch_Hourly_Forecast();
+            } else {
+                // 返回默认模式
+                currentMode = MODE_DEFAULT;
+                Serial.println("返回默认模式");
+            }
+        }
+        while(digitalRead(K_M_PIN) == LOW);
+    }
+
+    // 自动返回逻辑
+    if (currentMode == MODE_HOURLY) {
+        if ((currentMillis - modeChangeTime) > MODE_AUTO_RETURN_TIME) {
+            currentMode = MODE_DEFAULT;
+            Serial.println("自动返回默认模式");
+        }
+    }
+}
+
+// ==================== Setup & Loop ====================
+
+void setup() {
+    Serial.begin(115200);
+    Serial.println("\n==========================================");
+    Serial.println("ESP32-S3 天气仪表板 VFD Display");
+    Serial.println("==========================================\n");
+
+    // 1. 初始化 GPIO 引脚
+    pinMode(VFD_LAT_PIN, OUTPUT);
+    pinMode(VFD_CLKG_PIN, OUTPUT);
+    pinMode(VFD_SIG_PIN, OUTPUT);
+    pinMode(HV_EN_PIN, OUTPUT);
+    pinMode(FL_EN_PIN, OUTPUT);
+
+    pinMode(K_U_PIN, INPUT_PULLUP);
+    pinMode(K_D_PIN, INPUT_PULLUP);
+    pinMode(K_M_PIN, INPUT_PULLUP);
+
+    // 2. 配置 LEDC PWM
+    ledcAttach(VFD_BK_PIN, LEDC_FREQUENCY, LEDC_RESOLUTION);
+    ledcWrite(VFD_BK_PIN, Disp_Brt_Data);
+
+    Serial.println("✓ GPIO 初始化完成");
+
+    // 3. 初始化 SPI
+    vspi = new SPIClass(HSPI);
+    vspi->begin(VFD_CLKA_PIN, -1, VFD_SIA_PIN, -1);
+    vspi->beginTransaction(SPISettings(8000000, LSBFIRST, SPI_MODE0));
+
+    Serial.println("✓ SPI 初始化完成");
+
+    // 4. VFD上电时序
+    digitalWrite(FL_EN_PIN, HIGH);
+    digitalWrite(HV_EN_PIN, LOW);
+    DP_RAM_CLR();
+
+    Serial.println("✓ 灯丝预热中...");
+    delay(500);
+
+    // 5. 初始化硬件定时器
+    timer = timerBegin(5319);
+    timerAttachInterrupt(timer, &onTimer);
+    timerAlarm(timer, 1, true, 0);
+
+    Serial.println("✓ 硬件定时器启动");
+
+    Disp_Buf_Update();
+
+    digitalWrite(FL_EN_PIN, LOW);
+    delay(100);
+    digitalWrite(HV_EN_PIN, HIGH);
+    delay(100);
+
+    Serial.println("✓ VFD 准备就绪\n");
+
+    // 6. 初始化 AHT20
+    if (AHT20_Init()) {
         if (AHT20_ReadData(&temperature, &humidity)) {
-            Serial.printf("温度: %.1f°C, 湿度: %.1f%%\n", temperature, humidity);
-        } else {
-            Serial.println(" AHT20 读取失败");
+            Serial.printf("  温度: %.1f°C\n", temperature);
+            Serial.printf("  湿度: %.1f%%\n\n", humidity);
         }
     }
 
-    // 清屏并显示信息
-    DP_RAM_CLR();
+    // 7. 连接WiFi
+    Connect_WiFi();
 
-    // 显示标题
-    VFD_DISP_ASC816_STR(0, 0, "ESP32-S3 VFD");
+    // 8. 同步时间
+    if (wifiConnected) {
+        Sync_Time();
 
-    // 显示温湿度
-    Display_TempHumi(3, 0);
+        // 9. 获取天气数据
+        Fetch_Weather();
+        Fetch_Hourly_Forecast();
+        lastWeatherUpdate = millis();
+    }
 
-    // 显示运行时间
-    Show_Timer(6, 0);
+    Serial.println("\n按键功能:");
+    Serial.println("  K_U (GPIO18): 增加亮度");
+    Serial.println("  K_D (GPIO19): 减少亮度");
+    Serial.println("  K_M (GPIO20): 切换显示模式\n");
 
-    // 更新显示缓冲区
+    lastSensorRead = millis();
+}
+
+void loop() {
+    unsigned long currentMillis = millis();
+
+    // 1. 处理按键
+    Handle_Buttons();
+
+    // 2. 定期读取 AHT20（每2秒）
+    if (currentMillis - lastSensorRead >= SENSOR_READ_INTERVAL) {
+        lastSensorRead = currentMillis;
+        AHT20_ReadData(&temperature, &humidity);
+    }
+
+    // 3. 定期更新天气（每10分钟）
+    if (wifiConnected &&
+        (currentMillis - lastWeatherUpdate >= WEATHER_UPDATE_INTERVAL)) {
+        lastWeatherUpdate = currentMillis;
+        Fetch_Weather();
+        if (currentMode == MODE_HOURLY) {
+            Fetch_Hourly_Forecast();
+        }
+    }
+
+    // 4. 根据当前模式显示UI
+    if (currentMode == MODE_DEFAULT) {
+        Display_Default_UI();
+    } else {
+        Display_Hourly_UI();
+    }
+
+    // 5. 更新显示缓冲区
     Disp_Buf_Update();
     delay(100);
 }
