@@ -1,0 +1,750 @@
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                    05/26/2024  09:56:59  PAGE 1
+
+
+BL51 BANKED LINKER/LOCATER V6.22.2.0, INVOKED BY:
+D:\SOFTWARE\KEIL_V5\C51\BIN\BL51.EXE .\Objects\GP1211AI.obj TO .\Objects\GP1211AI PRINT (.\Listings\GP1211AI.m51) RAMSIZ
+>> E (256) CODE (0X0000-0XFFF8) XDATA (0X0000-0X1FFF)
+
+
+MEMORY MODEL: SMALL
+
+
+INPUT MODULES INCLUDED:
+  .\Objects\GP1211AI.obj (GP1211AI)
+  D:\SOFTWARE\KEIL_V5\C51\LIB\C51S.LIB (?C_STARTUP)
+  D:\SOFTWARE\KEIL_V5\C51\LIB\C51S.LIB (?C?CLDPTR)
+  D:\SOFTWARE\KEIL_V5\C51\LIB\C51S.LIB (?C?CSTPTR)
+  D:\SOFTWARE\KEIL_V5\C51\LIB\C51S.LIB (?C?UIDIV)
+
+
+LINK MAP OF MODULE:  .\Objects\GP1211AI (GP1211AI)
+
+
+            TYPE    BASE      LENGTH    RELOCATION   SEGMENT NAME
+            -----------------------------------------------------
+
+            * * * * * * *   D A T A   M E M O R Y   * * * * * * *
+            REG     0000H     0008H     ABSOLUTE     "REG BANK 0"
+            DATA    0008H     0007H     UNIT         ?DT?_VFD_DISP_PIC_3232?GP1211AI
+            DATA    000FH     0007H     UNIT         ?DT?_VFD_DISP_PIC_1616?GP1211AI
+            DATA    0016H     0005H     UNIT         ?DT?_VFD_DISP_ASC816_STR?GP1211AI
+            DATA    001BH     0004H     UNIT         ?DT?_VFD_DISP_ASC57_STR?GP1211AI
+                    001FH     0001H                  *** GAP ***
+            BIT     0020H.0   0000H.1   UNIT         ?BI?GP1211AI
+                    0020H.1   0000H.7                *** GAP ***
+            DATA    0021H     0004H     UNIT         ?DT?_VFD_DISP_ASC1224_STR?GP1211AI
+            DATA    0025H     0004H     UNIT         ?DT?GP1211AI
+            DATA    0029H     0004H     UNIT         _DATA_GROUP_
+            DATA    002DH     0003H     UNIT         ?DT?_VFD_DISP_ASC816?GP1211AI
+            DATA    0030H     0003H     UNIT         ?DT?_VFD_DISP_ASC1224?GP1211AI
+            IDATA   0033H     0001H     UNIT         ?STACK
+
+            * * * * * * *  X D A T A   M E M O R Y  * * * * * * *
+            XDATA   0000H     0C11H     UNIT         ?XD?GP1211AI
+
+            * * * * * * *   C O D E   M E M O R Y   * * * * * * *
+            CODE    0000H     0003H     ABSOLUTE     
+            CODE    0003H     0007H     UNIT         ?PR?SPI_INIT?GP1211AI
+                    000AH     0001H                  *** GAP ***
+            CODE    000BH     0003H     ABSOLUTE     
+            CODE    000EH     1AE5H     UNIT         ?CO?GP1211AI
+            CODE    1AF3H     05E2H     UNIT         ?PR?DISP_BUF_UPDATE?GP1211AI
+            CODE    20D5H     0142H     UNIT         ?PR?MAIN?GP1211AI
+            CODE    2217H     00CEH     UNIT         ?PR?_VFD_DISP_ASC1224?GP1211AI
+            CODE    22E5H     00BFH     UNIT         ?PR?_VFD_DISP_ASC816?GP1211AI
+            CODE    23A4H     00A8H     UNIT         ?PR?TIMER_0_SVR?GP1211AI
+            CODE    244CH     0080H     UNIT         ?C?LIB_CODE
+            CODE    24CCH     0077H     UNIT         ?PR?_VFD_DISP_PIC_3232?GP1211AI
+            CODE    2543H     0077H     UNIT         ?PR?_VFD_DISP_PIC_1616?GP1211AI
+            CODE    25BAH     0065H     UNIT         ?PR?_VFD_DISP_ASC57?GP1211AI
+            CODE    261FH     0050H     UNIT         ?PR?PWM_INIT?GP1211AI
+            CODE    266FH     0045H     UNIT         ?PR?_VFD_DISP_PIC_12864?GP1211AI
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  05/26/2024  09:56:59  PAGE 2
+
+
+            CODE    26B4H     003CH     UNIT         ?PR?DP_RAM_CLR?GP1211AI
+            CODE    26F0H     0031H     UNIT         ?PR?_VFD_DISP_ASC1224_STR?GP1211AI
+            CODE    2721H     002FH     UNIT         ?PR?_VFD_DISP_ASC816_STR?GP1211AI
+            CODE    2750H     002EH     UNIT         ?PR?_VFD_DISP_ASC57_STR?GP1211AI
+            CODE    277EH     0023H     UNIT         ?PR?GPIO_INIT?GP1211AI
+            CODE    27A1H     0011H     UNIT         ?PR?TIMER_0_INIT?GP1211AI
+            CODE    27B2H     000EH     UNIT         ?PR?DELAY_1S?GP1211AI
+            CODE    27C0H     000DH     UNIT         ?PR?DELAY_10MS?GP1211AI
+            CODE    27CDH     000DH     UNIT         ?PR?DELAY_100MS?GP1211AI
+            CODE    27DAH     000CH     UNIT         ?C_C51STARTUP
+            CODE    27E6H     000BH     UNIT         ?PR?_SPI_SEND_BYTE?GP1211AI
+            CODE    27F1H     0004H     UNIT         ?PR?PORT_SWITCH?GP1211AI
+
+
+
+OVERLAY MAP OF MODULE:   .\Objects\GP1211AI (GP1211AI)
+
+
+SEGMENT                                      DATA_GROUP 
+  +--> CALLED SEGMENT                      START    LENGTH
+----------------------------------------------------------
+?C_C51STARTUP                              -----    -----
+  +--> ?PR?MAIN?GP1211AI
+
+?PR?MAIN?GP1211AI                          -----    -----
+  +--> ?PR?PORT_SWITCH?GP1211AI
+  +--> ?PR?GPIO_INIT?GP1211AI
+  +--> ?PR?TIMER_0_INIT?GP1211AI
+  +--> ?PR?SPI_INIT?GP1211AI
+  +--> ?PR?PWM_INIT?GP1211AI
+  +--> ?PR?DELAY_100MS?GP1211AI
+  +--> ?PR?DP_RAM_CLR?GP1211AI
+  +--> ?CO?GP1211AI
+  +--> ?PR?_VFD_DISP_PIC_12864?GP1211AI
+  +--> ?PR?DISP_BUF_UPDATE?GP1211AI
+  +--> ?PR?DELAY_10MS?GP1211AI
+  +--> ?PR?_VFD_DISP_ASC57?GP1211AI
+
+?PR?DISP_BUF_UPDATE?GP1211AI               0029H    0004H
+
+?PR?_VFD_DISP_ASC57?GP1211AI               0029H    0003H
+  +--> ?CO?GP1211AI
+
+
+
+SYMBOL TABLE OF MODULE:  .\Objects\GP1211AI (GP1211AI)
+
+  VALUE           TYPE          NAME
+  ----------------------------------
+
+  -------         MODULE        GP1211AI
+  C:0000H         SYMBOL        _ICE_DUMMY_
+  D:0093H         PUBLIC        P0M1
+  D:0092H         PUBLIC        P1M0
+  B:00B0H.4       PUBLIC        K_U
+  D:0096H         PUBLIC        P2M0
+  D:0091H         PUBLIC        P1M1
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  05/26/2024  09:56:59  PAGE 3
+
+
+  D:0080H         PUBLIC        P0
+  D:00B2H         PUBLIC        P3M0
+  D:0095H         PUBLIC        P2M1
+  D:0090H         PUBLIC        P1
+  D:00B4H         PUBLIC        P4M0
+  D:00B1H         PUBLIC        P3M1
+  D:00A0H         PUBLIC        P2
+  D:00CAH         PUBLIC        P5M0
+  D:00B3H         PUBLIC        P4M1
+  D:00B0H         PUBLIC        P3
+  D:00CCH         PUBLIC        P6M0
+  D:00C9H         PUBLIC        P5M1
+  D:00C0H         PUBLIC        P4
+  D:00E2H         PUBLIC        P7M0
+  D:00CBH         PUBLIC        P6M1
+  D:00C8H         PUBLIC        P5
+  B:0080H.1       PUBLIC        FL_EN
+  D:00E8H         PUBLIC        P6
+  D:00E1H         PUBLIC        P7M1
+  B:00A8H.7       PUBLIC        EA
+  D:00F8H         PUBLIC        P7
+  C:277EH         PUBLIC        Gpio_Init
+  D:00CEH         PUBLIC        SPCTL
+  C:27A1H         PUBLIC        Timer_0_Init
+  D:00A2H         PUBLIC        P_SW1
+  D:00BAH         PUBLIC        P_SW2
+  D:00A8H         PUBLIC        IE
+  C:27E6H         PUBLIC        _Spi_Send_Byte
+  B:0080H.0       PUBLIC        HV_EN
+  C:266FH         PUBLIC        _VFD_DISP_PIC_12864
+  C:26B4H         PUBLIC        DP_RAM_CLR
+  C:25C0H         PUBLIC        _VFD_DISP_ASC57
+  D:00B8H         PUBLIC        IP
+  C:16F3H         PUBLIC        logo_12864
+  B:0020H.0       PUBLIC        DP_BUF_UPD
+  C:000EH         PUBLIC        ASC1224
+  B:00A0H.6       PUBLIC        VFD_LAT
+  C:0003H         PUBLIC        Spi_Init
+  C:27CDH         PUBLIC        Delay_100mS
+  B:00A0H.2       PUBLIC        VFD_SIG
+  C:2721H         PUBLIC        _VFD_DISP_ASC816_STR
+  C:20D5H         PUBLIC        main
+  C:261FH         PUBLIC        Pwm_Init
+  C:23A4H         PUBLIC        Timer_0_Svr
+  D:0098H         PUBLIC        SCON
+  D:0089H         PUBLIC        TMOD
+  D:0088H         PUBLIC        TCON
+  C:1673H         PUBLIC        space_3232
+  C:15D3H         PUBLIC        space_1616
+  D:0025H         PUBLIC        DP_BUF_POINT
+  D:008EH         PUBLIC        AUXR
+  C:138EH         PUBLIC        ASC57
+  B:00A8H.1       PUBLIC        ET0
+  B:0088H.5       PUBLIC        TF0
+  C:22E5H         PUBLIC        _VFD_DISP_ASC816
+  D:008CH         PUBLIC        TH0
+  C:26F0H         PUBLIC        _VFD_DISP_ASC1224_STR
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  05/26/2024  09:56:59  PAGE 4
+
+
+  D:008AH         PUBLIC        TL0
+  X:0000H         PUBLIC        DP_BUF
+  X:0810H         PUBLIC        DP_RAM
+  C:27B2H         PUBLIC        Delay_1S
+  B:0088H.4       PUBLIC        TR0
+  C:1AF3H         PUBLIC        Disp_Buf_Update
+  C:24CCH         PUBLIC        _VFD_DISP_PIC_3232
+  C:2543H         PUBLIC        _VFD_DISP_PIC_1616
+  D:00CDH         PUBLIC        SPSTAT
+  B:00A0H.4       PUBLIC        VFD_CLKG
+  C:15F3H         PUBLIC        mute_3232
+  C:1593H         PUBLIC        narrow_l
+  B:00B0H.5       PUBLIC        K_D
+  D:0028H         PUBLIC        VFD_GRID_SCAN
+  C:15B3H         PUBLIC        narrow_r
+  C:2750H         PUBLIC        _VFD_DISP_ASC57_STR
+  C:27C0H         PUBLIC        Delay_10mS
+  C:2217H         PUBLIC        _VFD_DISP_ASC1224
+  C:0D8EH         PUBLIC        ASC816
+  X:0C10H         PUBLIC        Disp_Brt_Data
+  D:00D0H         PUBLIC        PSW
+  C:1573H         PUBLIC        set_1616
+  C:27F1H         PUBLIC        Port_Switch
+  D:00CFH         PUBLIC        SPDAT
+  D:0094H         PUBLIC        P0M0
+  -------         PROC          DELAY_10MS
+  -------         DO            
+  D:0007H         SYMBOL        i
+  D:0006H         SYMBOL        j
+  D:0005H         SYMBOL        k
+  -------         ENDDO         
+  C:27C0H         LINE#         52
+  C:27C0H         LINE#         53
+  C:27C0H         LINE#         55
+  C:27C2H         LINE#         56
+  C:27C4H         LINE#         57
+  C:27C6H         LINE#         59
+  C:27C6H         LINE#         61
+  C:27C6H         LINE#         62
+  C:27C8H         LINE#         63
+  C:27CAH         LINE#         64
+  C:27CCH         LINE#         65
+  -------         ENDPROC       DELAY_10MS
+  -------         PROC          DELAY_100MS
+  -------         DO            
+  D:0007H         SYMBOL        i
+  D:0006H         SYMBOL        j
+  D:0005H         SYMBOL        k
+  -------         ENDDO         
+  C:27CDH         LINE#         67
+  C:27CDH         LINE#         68
+  C:27CDH         LINE#         70
+  C:27CFH         LINE#         71
+  C:27D1H         LINE#         72
+  C:27D3H         LINE#         74
+  C:27D3H         LINE#         76
+  C:27D3H         LINE#         77
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  05/26/2024  09:56:59  PAGE 5
+
+
+  C:27D5H         LINE#         78
+  C:27D7H         LINE#         79
+  C:27D9H         LINE#         80
+  -------         ENDPROC       DELAY_100MS
+  -------         PROC          DELAY_1S
+  -------         DO            
+  D:0007H         SYMBOL        i
+  D:0006H         SYMBOL        j
+  D:0005H         SYMBOL        k
+  -------         ENDDO         
+  C:27B2H         LINE#         82
+  C:27B2H         LINE#         83
+  C:27B2H         LINE#         85
+  C:27B3H         LINE#         86
+  C:27B5H         LINE#         87
+  C:27B7H         LINE#         88
+  C:27B9H         LINE#         90
+  C:27B9H         LINE#         92
+  C:27B9H         LINE#         93
+  C:27BBH         LINE#         94
+  C:27BDH         LINE#         95
+  C:27BFH         LINE#         96
+  -------         ENDPROC       DELAY_1S
+  -------         PROC          DISP_BUF_UPDATE
+  -------         DO            
+  D:0029H         SYMBOL        i
+  D:002AH         SYMBOL        VFD_GRID
+  D:002BH         SYMBOL        VFD_GRID_TMP
+  D:0007H         SYMBOL        Dp_Ram_Temp
+  D:002CH         SYMBOL        Dp_Ram_Base_Addr
+  D:0001H         SYMBOL        Dp_Buf_Ptr
+  -------         ENDDO         
+  C:1AF3H         LINE#         106
+  C:1AF3H         LINE#         107
+  C:1AF3H         LINE#         108
+  C:1AF6H         LINE#         110
+  C:1AF8H         LINE#         111
+  C:1AF9H         LINE#         112
+  C:1AFBH         LINE#         115
+  C:1B01H         LINE#         117
+  C:1B11H         LINE#         118
+  C:1B11H         LINE#         119
+  C:1B18H         LINE#         121
+  C:1B20H         LINE#         122
+  C:1B31H         LINE#         123
+  C:1B31H         LINE#         124
+  C:1B3EH         LINE#         125
+  C:1B3EH         LINE#         126
+  C:1B5BH         LINE#         127
+  C:1B7EH         LINE#         128
+  C:1BA0H         LINE#         129
+  C:1BA8H         LINE#         130
+  C:1BACH         LINE#         131
+  C:1BB3H         LINE#         132
+  C:1BD3H         LINE#         133
+  C:1BF7H         LINE#         134
+  C:1C1AH         LINE#         135
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  05/26/2024  09:56:59  PAGE 6
+
+
+  C:1C21H         LINE#         136
+  C:1C25H         LINE#         137
+  C:1C2CH         LINE#         138
+  C:1C4EH         LINE#         139
+  C:1C6EH         LINE#         140
+  C:1C92H         LINE#         141
+  C:1C98H         LINE#         142
+  C:1C9CH         LINE#         143
+  C:1CA3H         LINE#         144
+  C:1CC6H         LINE#         145
+  C:1CE8H         LINE#         146
+  C:1D0AH         LINE#         147
+  C:1D13H         LINE#         148
+  C:1D17H         LINE#         149
+  C:1D1EH         LINE#         150
+  C:1D3FH         LINE#         151
+  C:1D61H         LINE#         152
+  C:1D83H         LINE#         153
+  C:1D8AH         LINE#         154
+  C:1D8EH         LINE#         155
+  C:1D95H         LINE#         156
+  C:1DB7H         LINE#         157
+  C:1DD8H         LINE#         158
+  C:1DFAH         LINE#         159
+  C:1DFDH         LINE#         160
+  C:1DFDH         LINE#         161
+  C:1DFDH         LINE#         162
+  C:1E00H         LINE#         164
+  C:1E00H         LINE#         165
+  C:1E1BH         LINE#         166
+  C:1E3FH         LINE#         167
+  C:1E60H         LINE#         168
+  C:1E67H         LINE#         169
+  C:1E6BH         LINE#         170
+  C:1E72H         LINE#         171
+  C:1E94H         LINE#         172
+  C:1EB6H         LINE#         173
+  C:1EDAH         LINE#         174
+  C:1EE0H         LINE#         175
+  C:1EE4H         LINE#         176
+  C:1EEBH         LINE#         177
+  C:1F0DH         LINE#         178
+  C:1F2FH         LINE#         179
+  C:1F51H         LINE#         180
+  C:1F59H         LINE#         181
+  C:1F5DH         LINE#         182
+  C:1F64H         LINE#         183
+  C:1F85H         LINE#         184
+  C:1FA7H         LINE#         185
+  C:1FC7H         LINE#         186
+  C:1FCEH         LINE#         187
+  C:1FD2H         LINE#         188
+  C:1FD9H         LINE#         189
+  C:1FFBH         LINE#         190
+  C:201EH         LINE#         191
+  C:2040H         LINE#         192
+  C:2045H         LINE#         193
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  05/26/2024  09:56:59  PAGE 7
+
+
+  C:2049H         LINE#         194
+  C:2050H         LINE#         195
+  C:2073H         LINE#         196
+  C:2095H         LINE#         197
+  C:20B8H         LINE#         198
+  C:20BFH         LINE#         199
+  C:20C3H         LINE#         200
+  C:20CAH         LINE#         201
+  C:20CAH         LINE#         202
+  C:20CFH         LINE#         203
+  C:20D4H         LINE#         204
+  -------         ENDPROC       DISP_BUF_UPDATE
+  -------         PROC          L?0121
+  -------         ENDPROC       L?0121
+  -------         PROC          _VFD_DISP_ASC57
+  D:0029H         SYMBOL        VFD_X
+  D:002AH         SYMBOL        VFD_Y
+  D:002BH         SYMBOL        DAT
+  -------         DO            
+  D:0001H         SYMBOL        i
+  -------         ENDDO         
+  C:25C0H         LINE#         208
+  C:25C6H         LINE#         209
+  C:25C6H         LINE#         211
+  C:25D2H         LINE#         212
+  C:25D2H         LINE#         213
+  C:261BH         LINE#         214
+  C:261EH         LINE#         215
+  -------         ENDPROC       _VFD_DISP_ASC57
+  -------         PROC          _VFD_DISP_ASC57_STR
+  D:001BH         SYMBOL        VFD_X
+  D:0004H         SYMBOL        VFD_Y
+  D:001CH         SYMBOL        STR
+  C:2750H         LINE#         218
+  C:275AH         LINE#         219
+  C:275AH         LINE#         220
+  C:2765H         LINE#         221
+  C:2765H         LINE#         222
+  C:277BH         LINE#         223
+  C:277DH         LINE#         224
+  -------         ENDPROC       _VFD_DISP_ASC57_STR
+  -------         PROC          _VFD_DISP_ASC816
+  D:002DH         SYMBOL        VFD_X
+  D:002EH         SYMBOL        VFD_Y
+  D:002FH         SYMBOL        DAT
+  -------         DO            
+  D:0001H         SYMBOL        i
+  -------         ENDDO         
+  C:22E5H         LINE#         228
+  C:22EBH         LINE#         229
+  C:22EBH         LINE#         231
+  C:22FAH         LINE#         232
+  C:22FAH         LINE#         233
+  C:2353H         LINE#         234
+  C:239FH         LINE#         235
+  C:23A3H         LINE#         236
+  -------         ENDPROC       _VFD_DISP_ASC816
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  05/26/2024  09:56:59  PAGE 8
+
+
+  -------         PROC          _VFD_DISP_ASC816_STR
+  D:0016H         SYMBOL        VFD_X
+  D:0017H         SYMBOL        VFD_Y
+  D:0018H         SYMBOL        STR
+  C:2721H         LINE#         239
+  C:272BH         LINE#         240
+  C:272BH         LINE#         241
+  C:2736H         LINE#         242
+  C:2736H         LINE#         243
+  C:274DH         LINE#         244
+  C:274FH         LINE#         245
+  -------         ENDPROC       _VFD_DISP_ASC816_STR
+  -------         PROC          _VFD_DISP_ASC1224
+  D:0030H         SYMBOL        VFD_X
+  D:0031H         SYMBOL        VFD_Y
+  D:0032H         SYMBOL        DAT
+  -------         DO            
+  D:0001H         SYMBOL        i
+  -------         ENDDO         
+  C:2217H         LINE#         248
+  C:221DH         LINE#         249
+  C:221DH         LINE#         251
+  C:222CH         LINE#         252
+  C:222CH         LINE#         253
+  C:226EH         LINE#         254
+  C:22A7H         LINE#         255
+  C:22E0H         LINE#         256
+  C:22E4H         LINE#         257
+  -------         ENDPROC       _VFD_DISP_ASC1224
+  -------         PROC          _VFD_DISP_ASC1224_STR
+  D:0021H         SYMBOL        VFD_X
+  D:0006H         SYMBOL        VFD_Y
+  D:0022H         SYMBOL        STR
+  C:26F0H         LINE#         260
+  C:26FAH         LINE#         261
+  C:26FAH         LINE#         262
+  C:2705H         LINE#         263
+  C:2705H         LINE#         264
+  C:271AH         LINE#         265
+  C:271EH         LINE#         266
+  C:2720H         LINE#         267
+  -------         ENDPROC       _VFD_DISP_ASC1224_STR
+  -------         PROC          _VFD_DISP_PIC_3232
+  D:0008H         SYMBOL        LCD_X
+  D:0009H         SYMBOL        LCD_Y
+  D:000AH         SYMBOL        dat
+  -------         DO            
+  D:000DH         SYMBOL        i
+  D:000EH         SYMBOL        j
+  -------         ENDDO         
+  C:24CCH         LINE#         270
+  C:24D6H         LINE#         271
+  C:24D6H         LINE#         272
+  C:24D9H         LINE#         273
+  C:24DBH         LINE#         274
+  C:24E8H         LINE#         275
+  C:24E8H         LINE#         276
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  05/26/2024  09:56:59  PAGE 9
+
+
+  C:24F6H         LINE#         277
+  C:24F6H         LINE#         278
+  C:252FH         LINE#         279
+  C:253AH         LINE#         280
+  C:253EH         LINE#         281
+  C:2542H         LINE#         282
+  -------         ENDPROC       _VFD_DISP_PIC_3232
+  -------         PROC          _VFD_DISP_PIC_1616
+  D:000FH         SYMBOL        LCD_X
+  D:0010H         SYMBOL        LCD_Y
+  D:0011H         SYMBOL        dat
+  -------         DO            
+  D:0014H         SYMBOL        i
+  D:0015H         SYMBOL        j
+  -------         ENDDO         
+  C:2543H         LINE#         285
+  C:254DH         LINE#         286
+  C:254DH         LINE#         287
+  C:2550H         LINE#         288
+  C:2552H         LINE#         289
+  C:255FH         LINE#         290
+  C:255FH         LINE#         291
+  C:256DH         LINE#         292
+  C:256DH         LINE#         293
+  C:25A6H         LINE#         294
+  C:25B1H         LINE#         295
+  C:25B5H         LINE#         296
+  C:25B9H         LINE#         297
+  -------         ENDPROC       _VFD_DISP_PIC_1616
+  -------         PROC          _VFD_DISP_PIC_12864
+  D:0001H         SYMBOL        dat
+  -------         DO            
+  D:0007H         SYMBOL        i
+  D:0006H         SYMBOL        j
+  -------         ENDDO         
+  C:266FH         LINE#         300
+  C:266FH         LINE#         301
+  C:266FH         LINE#         302
+  C:2671H         LINE#         303
+  C:2671H         LINE#         304
+  C:267BH         LINE#         305
+  C:267BH         LINE#         306
+  C:2687H         LINE#         307
+  C:2687H         LINE#         308
+  C:26A6H         LINE#         309
+  C:26ADH         LINE#         310
+  C:26B0H         LINE#         311
+  C:26B3H         LINE#         312
+  -------         ENDPROC       _VFD_DISP_PIC_12864
+  -------         PROC          DP_RAM_CLR
+  -------         DO            
+  D:0007H         SYMBOL        i
+  D:0006H         SYMBOL        j
+  -------         ENDDO         
+  C:26B4H         LINE#         315
+  C:26B4H         LINE#         316
+  C:26B4H         LINE#         317
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  05/26/2024  09:56:59  PAGE 10
+
+
+  C:26B6H         LINE#         318
+  C:26B6H         LINE#         320
+  C:26C0H         LINE#         321
+  C:26C0H         LINE#         322
+  C:26CCH         LINE#         323
+  C:26CCH         LINE#         324
+  C:26E7H         LINE#         325
+  C:26EAH         LINE#         326
+  C:26EDH         LINE#         327
+  C:26EFH         LINE#         328
+  -------         ENDPROC       DP_RAM_CLR
+  -------         PROC          TIMER_0_SVR
+  -------         DO            
+  D:0007H         SYMBOL        cycle_cnt
+  -------         ENDDO         
+  C:23A4H         LINE#         335
+  C:23B9H         LINE#         337
+  C:23BBH         LINE#         338
+  C:23BFH         LINE#         339
+  C:23BFH         LINE#         340
+  C:23C8H         LINE#         341
+  C:23CBH         LINE#         343
+  C:23CDH         LINE#         344
+  C:23D3H         LINE#         345
+  C:23D9H         LINE#         346
+  C:23DBH         LINE#         347
+  C:23E1H         LINE#         348
+  C:23E7H         LINE#         349
+  C:23EDH         LINE#         350
+  C:23EDH         LINE#         352
+  C:23FAH         LINE#         353
+  C:23FAH         LINE#         354
+  C:240DH         LINE#         355
+  C:2412H         LINE#         356
+  C:2415H         LINE#         357
+  C:2417H         LINE#         358
+  C:241DH         LINE#         359
+  C:2424H         LINE#         360
+  C:242AH         LINE#         361
+  C:2437H         LINE#         362
+  C:2439H         LINE#         363
+  -------         ENDPROC       TIMER_0_SVR
+  -------         PROC          GPIO_INIT
+  C:277EH         LINE#         370
+  C:277EH         LINE#         371
+  C:277EH         LINE#         373
+  C:2784H         LINE#         375
+  C:2788H         LINE#         377
+  C:278CH         LINE#         379
+  C:2790H         LINE#         381
+  C:2794H         LINE#         383
+  C:2798H         LINE#         385
+  C:279CH         LINE#         387
+  C:27A0H         LINE#         388
+  -------         ENDPROC       GPIO_INIT
+  -------         PROC          PORT_SWITCH
+  C:27F1H         LINE#         390
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  05/26/2024  09:56:59  PAGE 11
+
+
+  C:27F1H         LINE#         391
+  C:27F1H         LINE#         396
+  C:27F4H         LINE#         409
+  -------         ENDPROC       PORT_SWITCH
+  -------         PROC          PWM_INIT
+  C:261FH         LINE#         411
+  C:261FH         LINE#         412
+  C:261FH         LINE#         413
+  C:2622H         LINE#         414
+  C:2627H         LINE#         415
+  C:262DH         LINE#         416
+  C:2631H         LINE#         417
+  C:2637H         LINE#         418
+  C:2646H         LINE#         419
+  C:264CH         LINE#         420
+  C:2655H         LINE#         421
+  C:265CH         LINE#         422
+  C:2662H         LINE#         423
+  C:2668H         LINE#         424
+  C:266EH         LINE#         425
+  -------         ENDPROC       PWM_INIT
+  -------         PROC          SPI_INIT
+  C:0003H         LINE#         427
+  C:0003H         LINE#         428
+  C:0003H         LINE#         432
+  C:0006H         LINE#         435
+  C:0009H         LINE#         436
+  -------         ENDPROC       SPI_INIT
+  -------         PROC          TIMER_0_INIT
+  C:27A1H         LINE#         438
+  C:27A1H         LINE#         439
+  C:27A1H         LINE#         440
+  C:27A4H         LINE#         441
+  C:27A7H         LINE#         442
+  C:27AAH         LINE#         443
+  C:27ADH         LINE#         444
+  C:27AFH         LINE#         445
+  C:27B1H         LINE#         446
+  -------         ENDPROC       TIMER_0_INIT
+  -------         PROC          _SPI_SEND_BYTE
+  D:0007H         SYMBOL        dat
+  C:27E6H         LINE#         448
+  C:27E6H         LINE#         449
+  C:27E6H         LINE#         450
+  C:27E8H         LINE#         451
+  C:27EDH         LINE#         452
+  C:27F0H         LINE#         453
+  -------         ENDPROC       _SPI_SEND_BYTE
+  -------         PROC          MAIN
+  C:20D5H         LINE#         455
+  C:20D5H         LINE#         456
+  C:20D5H         LINE#         457
+  C:20DBH         LINE#         458
+  C:20DDH         LINE#         459
+  C:20DFH         LINE#         461
+  C:20E2H         LINE#         462
+  C:20E5H         LINE#         463
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  05/26/2024  09:56:59  PAGE 12
+
+
+  C:20E8H         LINE#         464
+  C:20EBH         LINE#         465
+  C:20EEH         LINE#         467
+  C:20F1H         LINE#         468
+  C:20F3H         LINE#         469
+  C:20F5H         LINE#         472
+  C:20F8H         LINE#         485
+  C:2101H         LINE#         486
+  C:2104H         LINE#         488
+  C:2106H         LINE#         490
+  C:2108H         LINE#         491
+  C:210BH         LINE#         492
+  C:210DH         LINE#         494
+  C:210DH         LINE#         495
+  C:210DH         LINE#         496
+  C:2110H         LINE#         497
+  C:2110H         LINE#         498
+  C:2113H         LINE#         499
+  C:2116H         LINE#         500
+  C:2116H         LINE#         501
+  C:211DH         LINE#         502
+  C:212AH         LINE#         503
+  C:2137H         LINE#         505
+  C:2137H         LINE#         506
+  C:213AH         LINE#         507
+  C:213AH         LINE#         509
+  C:213DH         LINE#         510
+  C:213DH         LINE#         511
+  C:2140H         LINE#         512
+  C:2143H         LINE#         513
+  C:2143H         LINE#         514
+  C:214AH         LINE#         515
+  C:2150H         LINE#         516
+  C:215DH         LINE#         517
+  C:215DH         LINE#         518
+  C:2160H         LINE#         519
+  C:2160H         LINE#         521
+  C:2178H         LINE#         522
+  C:2198H         LINE#         523
+  C:21C5H         LINE#         524
+  C:21F8H         LINE#         525
+  C:21FBH         LINE#         526
+  C:21FEH         LINE#         527
+  C:2204H         LINE#         528
+  C:2214H         LINE#         530
+  -------         ENDPROC       MAIN
+  -------         ENDMOD        GP1211AI
+
+  -------         MODULE        ?C?CLDPTR
+  C:244CH         PUBLIC        ?C?CLDPTR
+  -------         ENDMOD        ?C?CLDPTR
+
+  -------         MODULE        ?C?CSTPTR
+  C:2465H         PUBLIC        ?C?CSTPTR
+  -------         ENDMOD        ?C?CSTPTR
+
+  -------         MODULE        ?C?UIDIV
+BL51 BANKED LINKER/LOCATER V6.22.2.0                                                  05/26/2024  09:56:59  PAGE 13
+
+
+  C:2477H         PUBLIC        ?C?UIDIV
+  -------         ENDMOD        ?C?UIDIV
+
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?DELAY_1S?GP1211AI
+
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?_VFD_DISP_ASC57_STR?GP1211AI
+
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?_VFD_DISP_ASC816_STR?GP1211AI
+
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?_VFD_DISP_ASC1224_STR?GP1211AI
+
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?_VFD_DISP_PIC_3232?GP1211AI
+
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?_VFD_DISP_PIC_1616?GP1211AI
+
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?_SPI_SEND_BYTE?GP1211AI
+
+Program Size: data=50.1 xdata=3089 code=10228
+LINK/LOCATE RUN COMPLETE.  7 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp:*)",
+      "Bash(for:*)",
+      "Bash(do sed:*)",
+      "Bash(done:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
