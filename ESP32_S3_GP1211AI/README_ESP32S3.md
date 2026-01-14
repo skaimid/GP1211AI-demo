@@ -85,18 +85,22 @@ pio run -t upload
 | ESP32-S3 | 设备 | 功能 |
 |----------|------|------|
 | **VFD 显示屏** |
-| GPIO12 | VFD BK | PWM 亮度 |
-| GPIO13 | VFD LAT | 锁存 |
-| GPIO14 | VFD CLKG | 栅极时钟 |
-| GPIO15 | VFD SIG | 信号 |
-| GPIO11 | VFD SIA | SPI MOSI |
-| GPIO12 | VFD CLKA | SPI SCK |
+| GPIO10 | VFD BK | PWM 亮度 |
+| GPIO11 | VFD LAT | 锁存 |
+| GPIO12 | VFD CLKG | 栅极时钟 |
+| GPIO13 | VFD SIG | 信号 |
+| GPIO14 | VFD SIA | SPI MOSI |
+| GPIO15 | VFD CLKA | SPI SCK |
 | GPIO16 | VFD HV_EN | 高压使能 |
 | GPIO17 | VFD FL_EN | 灯丝使能 |
 | **AHT20 传感器** |
-| GPIO21 | AHT20 SDA | I2C 数据 |
-| GPIO22 | AHT20 SCL | I2C 时钟 |
+| GPIO8 | AHT20 SDA | I2C 数据 |
+| GPIO9 | AHT20 SCL | I2C 时钟 |
 | 3.3V | AHT20 VCC | 传感器电源 |
+| **按键（可选）** |
+| GPIO4 | K_U | 增加亮度 |
+| GPIO5 | K_D | 减少亮度 |
+| GPIO6 | K_M | 菜单 |
 | **电源** |
 | 3.3V | - | 电源正极 |
 | GND | - | 公共地 |

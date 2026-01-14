@@ -19,30 +19,38 @@
 // #include "../Arduino_GP1211AI/CHINESE.h" // 如果需要中文，取消注释
 
 // ==================== ESP32-S3 引脚定义 ====================
-// ESP32-S3 GPIO 引脚配置（可根据实际硬件修改）
-#define VFD_BK_PIN   GPIO_NUM_12  // PWM 亮度控制
-#define VFD_LAT_PIN  GPIO_NUM_13  // 数据锁存
-#define VFD_CLKG_PIN GPIO_NUM_14  // 栅极时钟
-#define VFD_SIG_PIN  GPIO_NUM_15  // 信号控制
+// ESP32-S3 GPIO 引脚配置（优化版，避免冲突）
+//
+// 注意事项：
+// - GPIO33-37: 仅输入（不能输出）
+// - GPIO19/20: USB-JTAG（调试时占用，避免使用）
+// - GPIO0: Strapping 引脚（可用但需注意）
+// - GPIO26-32: PSRAM 使用时占用
+//
+// VFD 显示屏控制引脚（需要输出能力）
+#define VFD_BK_PIN   GPIO_NUM_10  // PWM 亮度控制
+#define VFD_LAT_PIN  GPIO_NUM_11  // 数据锁存
+#define VFD_CLKG_PIN GPIO_NUM_12  // 栅极时钟
+#define VFD_SIG_PIN  GPIO_NUM_13  // 信号控制
 
-// ESP32-S3 HSPI 引脚（使用默认 HSPI）
-#define VFD_SIA_PIN  GPIO_NUM_11  // MOSI
-#define VFD_CLKA_PIN GPIO_NUM_12  // SCK
-#define VFD_SS_PIN   GPIO_NUM_10  // SS (可选，未使用)
+// ESP32-S3 SPI 引脚（HSPI/SPI2，引脚可配置）
+#define VFD_SIA_PIN  GPIO_NUM_14  // MOSI (SPI 数据输出)
+#define VFD_CLKA_PIN GPIO_NUM_15  // SCK (SPI 时钟)
+#define VFD_SS_PIN   GPIO_NUM_21  // SS (可选，未使用)
 
 // 电源管理引脚
 #define HV_EN_PIN    GPIO_NUM_16  // 高压使能
 #define FL_EN_PIN    GPIO_NUM_17  // 灯丝使能
 
-// 按键引脚
-#define K_U_PIN      GPIO_NUM_18  // 增加亮度
-#define K_D_PIN      GPIO_NUM_19  // 减少亮度
-#define K_M_PIN      GPIO_NUM_20  // 菜单
-
 // I2C 引脚 (AHT20 温湿度传感器)
-#define I2C_SDA_PIN  GPIO_NUM_21  // I2C 数据线
-#define I2C_SCL_PIN  GPIO_NUM_22  // I2C 时钟线
+#define I2C_SDA_PIN  GPIO_NUM_8   // I2C 数据线 (SDA)
+#define I2C_SCL_PIN  GPIO_NUM_9   // I2C 时钟线 (SCL)
 #define I2C_FREQ     100000       // I2C 频率 100kHz
+
+// 按键引脚（使用通用 GPIO，避开 USB-JTAG）
+#define K_U_PIN      GPIO_NUM_4   // 增加亮度（内部上拉）
+#define K_D_PIN      GPIO_NUM_5   // 减少亮度（内部上拉）
+#define K_M_PIN      GPIO_NUM_6   // 菜单（内部上拉）
 
 // AHT20 配置
 #define AHT20_ADDR   0x38         // AHT20 I2C 地址
@@ -460,9 +468,9 @@ void setup() {
     }
 
     Serial.println("按键功能:");
-    Serial.println("  K_U (GPIO18): 增加亮度");
-    Serial.println("  K_D (GPIO19): 减少亮度");
-    Serial.println("  K_M (GPIO20): 菜单\n");
+    Serial.println("  K_U (GPIO4): 增加亮度");
+    Serial.println("  K_D (GPIO5): 减少亮度");
+    Serial.println("  K_M (GPIO6): 菜单\n");
 
     timerStartTime = millis();
     lastSensorRead = millis();
